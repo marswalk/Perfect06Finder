@@ -15,11 +15,19 @@ def has_consecutive_digits(phone_number):
     if len(unique_digits) <= 3:
         return True, f"Limited unique digits: {len(unique_digits)} ({', '.join(unique_digits)})"
     
+    # Find all quadruplets (4 consecutive same digits)
+    for i in range(len(digits) - 3):
+        if digits[i] == digits[i+1] == digits[i+2] == digits[i+3]:
+            return True, f"Four consecutive same digits: {digits[i:i+4]}"
+
     # Find all triplets (3 consecutive same digits)
-    triplets = []
+    # Store them by their value to ensure uniqueness
+    unique_triplets = {}
     for i in range(len(digits) - 2):
         if digits[i] == digits[i+1] == digits[i+2]:
-            triplets.append(digits[i:i+3])
+            if digits[i] not in unique_triplets:
+                unique_triplets[digits[i]] = []
+            unique_triplets[digits[i]].append(i)  # Store position of triplet
     
     # Find all doubles (2 consecutive same digits)
     doubles = []
@@ -31,13 +39,15 @@ def has_consecutive_digits(phone_number):
         else:
             i += 1
     
-    # Check for 2 triplets and 1 double
-    if len(triplets) >= 2 and len(doubles) >= 1:
-        return True, f"Two triplets and one double: triplets={triplets}, doubles={doubles}"
+    # Check for 2 unique triplets and 1 double
+    if len(unique_triplets) >= 2 and len(doubles) >= 1:
+        triplet_values = list(unique_triplets.keys())
+        triplet_examples = [f"{t}:{t}:{t}" for t in triplet_values[:2]]
+        return True, f"Two unique triplets and one double: triplets={triplet_examples}, doubles={doubles[:1]}"
     
     # Check for 4 doubles
     if len(doubles) >= 4:
-        return True, f"Four doubles: {doubles}"
+        return True, f"Four doubles: {doubles[:4]}"
     
     return False, None
 
@@ -50,19 +60,18 @@ def check_free_mobile_numbers():
     driver = webdriver.Firefox(options=options)
 
     try:
+        # Access the page
+        driver.get("https://mobile.free.fr/souscription/options")
+        # Wait for page to load - using a more reliable element
+        # try:
+        #     WebDriverWait(driver, 1).until(
+        #         EC.presence_of_element_located((By.XPATH, "//div[contains(text(), 'Configuration de ma ligne')]"))
+        #     )
+        # except:
+        #     print("Waiting for page to load...")
+        #     time.sleep(3)
+
         while True:
-            # Access the page
-            driver.get("https://mobile.free.fr/souscription/options")
-
-            # Wait for page to load - using a more reliable element
-            # try:
-            #     WebDriverWait(driver, 1).until(
-            #         EC.presence_of_element_located((By.XPATH, "//div[contains(text(), 'Configuration de ma ligne')]"))
-            #     )
-            # except:
-            #     print("Waiting for page to load...")
-            #     time.sleep(3)
-
             # Delete all cookies
             driver.delete_all_cookies()
 
@@ -101,9 +110,8 @@ def check_free_mobile_numbers():
             # Wait for the dropdown field to appear and click it
             try:
                 # From the image, we can see the dropdown field
-                dropdown = WebDriverWait(driver, 1).until(
-                    EC.element_to_be_clickable((By.XPATH, "//div[contains(@class, 'dropdown') or contains(@role, 'listbox')]"))
-                )
+                # edit: removed wait
+                dropdown = driver.find_element(By.XPATH, "//div[contains(@class, 'dropdown') or contains(@role, 'listbox')]")
                 dropdown.click()
                 print("Clicked on dropdown")
             except:
@@ -124,7 +132,7 @@ def check_free_mobile_numbers():
                         continue
 
             # Wait for options to appear
-            time.sleep(1)
+            # time.sleep(1)
 
             # Get all available phone numbers from the dropdown
             try:
@@ -189,7 +197,7 @@ def check_free_mobile_numbers():
             if not found_consecutive:
                 print("No numbers with consecutive digits found in this batch. Trying again...")
 
-            time.sleep(1)
+            # time.sleep(1)
 
 
     except KeyboardInterrupt:
